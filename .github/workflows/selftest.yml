@@ -98,14 +98,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          fail=0
-          for f in $(find assets/overseas-trending-search assets/twitter-work-search assets/youtube-digest -name '*.py'); do
-            if grep -qE 'DATA_API_BASE[^_a-zA-Z]' "$f"; then
-              echo "海外技能仍引用 DATA_API_BASE: $f"; fail=1
-            fi
-          done
-          test "$fail" -eq 0 || exit 1
-          echo "海外技能已脱离付费 API"
+          if command -v python3 >/dev/null 2>&1; then PY=python3; else PY=python; fi
+          "$PY" scripts/check_overseas_decoupled.py
 
       - name: 插件自检
         shell: bash
