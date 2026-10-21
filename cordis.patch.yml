@@ -1,0 +1,7 @@
+# 抖音专家 (douyin-expert) bundle patch
+#
+# 由 Loader 的 bundle 层加载：profile package.json 的 dsh.profile.bundles 里
+# 出现 "douyin-expert" 后，本文件被自动应用，插入下面这一行宿主插件。
+- insert:
+    - id: douyin-expert
+      name: 'douyin-expert'

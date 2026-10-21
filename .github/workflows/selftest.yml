@@ -1,0 +1,112 @@
+name: selftest
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  selftest:
+    name: 插件自检 / ${{ matrix.os }} / node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [22, 24]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: 语法检查（所有 JS）
+        shell: bash
+        run: |
+          set -euo pipefail
+          find lib scripts -type f \( -name '*.js' -o -name '*.mjs' \) | while read -r f; do
+            echo "check $f"
+            node --check "$f"
+          done
+
+      - name: package.json 完整性
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e '
+            const fs = require("fs");
+            const p = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            const need = ["name", "version", "main", "dsh"];
+            for (const k of need) {
+              if (!p[k]) { console.error("package.json 缺字段: " + k); process.exit(1); }
+            }
+            if (p.name !== "douyin-expert") {
+              console.error("包名应为 douyin-expert，实为 " + p.name); process.exit(1);
+            }
+            if (!p.dsh.bundle || !p.dsh.bundle.patch) {
+              console.error("package.json 缺 dsh.bundle.patch"); process.exit(1);
+            }
+            if (!fs.existsSync(p.dsh.bundle.patch)) {
+              console.error("cordis.patch.yml 不存在"); process.exit(1);
+            }
+            console.log("package.json OK:", p.name + "@" + p.version);
+          '
+
+      - name: 技能文件完整性（22 个 SKILL.md + frontmatter）
+        shell: bash
+        run: |
+          set -euo pipefail
+          n=$(find assets -name SKILL.md -mindepth 2 | wc -l)
+          echo "SKILL.md 数量: $n"
+          test "$n" -eq 22 || { echo "应为 22 个"; exit 1; }
+          fail=0
+          while read -r f; do
+            head -1 "$f" | tr -d '\r' | grep -qx -- '---' || { echo "缺 frontmatter 起始: $f"; fail=1; }
+            sed -n '2,/^---\r\{0,1\}$/p' "$f" | tr -d '\r' | grep -q '^name:' || { echo "缺 name: $f"; fail=1; }
+            sed -n '2,/^---\r\{0,1\}$/p' "$f" | tr -d '\r' | grep -q '^description:' || { echo "缺 description: $f"; fail=1; }
+          done < <(find assets -name SKILL.md -mindepth 2)
+          test "$fail" -eq 0 || exit 1
+          echo "frontmatter OK"
+
+      - name: Python 脚本语法检查
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v python3 >/dev/null 2>&1; then PY=python3; else PY=python; fi
+          "$PY" --version
+          fail=0
+          while read -r f; do
+            "$PY" -m py_compile "$f" || { echo "语法错误: $f"; fail=1; }
+          done < <(find assets -name '*.py')
+          test "$fail" -eq 0 || exit 1
+          echo "所有 Python 脚本语法 OK"
+
+      - name: 无明文密钥
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -rInE 'ak_[A-Za-z0-9]{16,}' --include='*.md' --include='*.py' --include='*.js' --include='*.mjs' . ; then
+            echo "发现疑似真实 API Key"; exit 1
+          fi
+          echo "无明文密钥"
+
+      - name: 海外技能不得残留付费 API 取数逻辑
+        shell: bash
+        run: |
+          set -euo pipefail
+          fail=0
+          for f in $(find assets/overseas-trending-search assets/twitter-work-search assets/youtube-digest -name '*.py'); do
+            if grep -qE 'DATA_API_BASE[^_a-zA-Z]' "$f"; then
+              echo "海外技能仍引用 DATA_API_BASE: $f"; fail=1
+            fi
+          done
+          test "$fail" -eq 0 || exit 1
+          echo "海外技能已脱离付费 API"
+
+      - name: 插件自检
+        shell: bash
+        run: node scripts/selftest.mjs
