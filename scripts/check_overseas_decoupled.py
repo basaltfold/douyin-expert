@@ -20,6 +20,14 @@ import ast
 import sys
 from pathlib import Path
 
+# CI 的 Windows runner 上 Python 默认 stdout 是 cp1252，打印中文会 UnicodeEncodeError。
+# 统一改成 UTF-8（Unix 上本身已是 UTF-8，reconfigure 无副作用）。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
 ROOTS = [
     "assets/overseas-trending-search",
     "assets/twitter-work-search",
