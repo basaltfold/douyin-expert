@@ -1,7 +1,23 @@
 #!/usr/bin/env node
-/**
+/*
  * 抖音专家 (douyin-expert) — 自检脚本
+ * Copyright (C) 2026 basaltfold
  *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/**
  * 不依赖 DSH 进程，直接以假 ctx 加载 lib/index.js，
  * 校验 22 个技能能被 list/get、frontmatter 可解析、正文能取到、运行时块按类型注入。
  *

@@ -94,6 +94,22 @@ jobs:
           fi
           echo "无明文密钥"
 
+      - name: GPL 版权头完整性
+        shell: bash
+        run: |
+          set -euo pipefail
+          # GPL-3.0 要求分发时保留版权声明，自研源文件必须有 Copyright (C) 2026 basaltfold。
+          # assets/ 下是上游 Qoder 插件的原档，版权归各自作者，不纳入检查。
+          fail=0
+          while read -r f; do
+            if ! head -20 "$f" | grep -q 'Copyright (C) 2026 basaltfold'; then
+              echo "缺版权头: $f"
+              fail=1
+            fi
+          done < <(find lib scripts -type f \( -name '*.js' -o -name '*.mjs' -o -name '*.py' \); echo install.ps1; echo uninstall.ps1)
+          test "$fail" -eq 0 || exit 1
+          echo "GPL 版权头齐全"
+
       - name: 海外技能不得残留付费 API 取数逻辑
         shell: bash
         run: |
